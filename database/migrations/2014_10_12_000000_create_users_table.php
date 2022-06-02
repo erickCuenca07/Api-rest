@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('surname')->nullable();
             $table->string('email');
             $table->string('password');
+            $table->string('imagen')->nullable();
             $table->integer('rol');
             $table->timestamp('email_verified_at')->nullable();
             $table->rememberToken();

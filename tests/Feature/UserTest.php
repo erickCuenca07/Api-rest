@@ -2,85 +2,150 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 use Tymon\JWTAuth\Facades\JWTAuth;
-
+use Tests\Feature\Config;
 use function PHPUnit\Framework\assertTrue;
 
 class UserTest extends TestCase
 {
     use RefreshDatabase;
-    // login
+    //metodo que me dara el token
+    protected function authenticate(){
+        $user = User::create([
+            "user" => "creando",
+            "name"=>"desde test",
+            "surname"=>"eso mismo",
+            "email"=>"test@gmail.com",
+            "password"=>bcrypt("12345678"),
+            "rol"=>"1"
+        ]);
+        $token = JWTAuth::fromUser($user);
+        return $token;
+    }
+    //metodo que comprueba el login
     public function testLogin()
     {
-        $data = [
-        "email"=>"test@gmail.com",
-        "password"=>"12345678",
-        ];
-
-    $response = $this->post('http://localhost:8000/api/login',$data);
-
-    $response
-        ->assertStatus($response->getStatusCode())
-        ->assertJsonStructure([
-            'access_token', 'token_type', 'expires_in'
-        ]);
-    
+        User::create(["user" => "creando",
+            "name"=>"desde test",
+            "surname"=>"eso mismo",
+            "email"=>"test@gmail.com",
+            "password"=>bcrypt("12345678"),
+            "rol"=>"1"]);
+        
+            $response = $this->json('POST',route('api.login'),[
+                'email'=>'test@gmail.com',
+                'password'=>'12345678'
+            ]);
+        
+            $response
+            ->assertStatus(200)
+            ->assertJsonStructure(['access_token', 'token_type', 'expires_in']);
+            
     }
-    // logout
+    //registarse sin iniciar sesion 
+    public function testRegister()
+    {
+        $data =["user" => "creando",
+            "name"=>"desde test",
+            "surname"=>"eso mismo",
+            "email"=>"test@gmail.com",
+            "password"=>"12345678",
+            "rol"=>"1"];
+
+            $response = $this->json('POST',route('api.register'),$data);
+            $response
+            ->assertStatus(201);       
+    }
+     // logout metodo que me cierra sesion
     public function testLogout()
     {
+        $token = $this->authenticate();//llamo al metodo que da el token
+        $response = $this->withHeaders([
+        'Authorization' => 'Bearer '. $token,
+        ]);
     $data = [
         "email"=>"test@gmail.com",
         "password"=>"12345678",
         ];
-    $token = JWTAuth::fromUser($data);
 
-    $response = $this->post('http://localhost:8000/api/logout'.$token ,$data);
+    $response = $this->json('POST',route('api.logout'),$data);
 
-    $response
-        ->assertStatus($response->getStatusCode())
-        ->assertExactJson([
-            'message' => 'Successfully logged out'
-        ]);
+    $response->assertStatus(200);
     }   
-    //create user
+    //me devulve el listado de usuarios
+    public function testIndexusers()
+    {
+        $token = $this->authenticate();
+        $response = $this->withHeaders([
+        'Authorization' => 'Bearer '. $token,
+        ]);
+    $data = [
+        "email"=>"test@gmail.com",
+        "password"=>"12345678"
+        ];
+
+    $response = $this->json('GET',route('api.getAll'),$data);
+
+    $response->assertStatus(200);
+    }
+    //metodo que me devuelve un solo usuario 
+    public function test_un_solo_user()
+    {
+        $token = $this->authenticate();
+        $response = $this->withHeaders([
+        'Authorization' => 'Bearer '. $token,
+        ]);
+    $data = [
+        "email"=>"test@gmail.com",
+        "password"=>"12345678"
+        ];
+
+    $response = $this->json('GET','/api/users/1',$data);
+
+    $response->assertStatus(200);
+    }
+    //metodo que crea usuarios una vez iniciada sesion
     public function test_create_user()
     {
-        $data = ["user" => "creando",
+        $token = $this->authenticate();
+        $response = $this->withHeaders([
+        'Authorization' => 'Bearer '. $token,
+        ]);
+    $data = [
+        "user" => "creando",
         "name"=>"desde test",
         "surname"=>"eso mismo",
         "email"=>"test@gmail.com",
         "password"=>"12345678",
-        "rol"=>"2"];
+        "rol"=>"2"
+        ];
 
-        $response = $this->post('http://localhost:8000/api/register',$data);
+    $response = $this->json('POST',route('api.create'),$data);
 
-        $response
-            ->assertStatus($response->getStatusCode())
-            ->assertDatabaseHas('users', $data);
-        
+    $response->assertStatus(200);
     }
-    //delete
+    //metodo que me elimina un usuario
     public function test_delete_user()
     {
-        $response = $this->delete('http://localhost:8000/api/users/1');
-
-        $response
-            ->assertStatus($response->getStatusCode())
-            ->assertJson(["msg"=>"Usuario eliminado correctamente"]);
+        $token = $this->authenticate();
+        $response = $this->withHeaders([
+        'Authorization' => 'Bearer '. $token,
+        ]);
+        $response = $this->json('DELETE','/api/users/1');
+        $response->assertStatus(200);
     }
-    //put
+    //metodo que me actualiza un usuario
     public function test_put_user()
     {
-        $response = $this->put('http://localhost:8000/api/users/1',[
-            "name" => "editando desde test"
+        $token = $this->authenticate();
+        $response = $this->withHeaders([
+        'Authorization' => 'Bearer '. $token,
         ]);
-
-        $response
-            ->assertStatus($response->getStatusCode())
-            ->assertJson(["msg"=>"Usuario editado correctamente"]);
+        $response = $this->json('PUT','api/users/1',['user' => 'erick']);
+        $response->assertStatus(200);
     }
 }

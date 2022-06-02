@@ -14,62 +14,92 @@ class UserController extends Controller
         $this->middleware('auth:api');
     }
 
- public function index(){
+ public function getAll(){
     return User::paginate();
  }
 
- public function show($id){
+ public function getOne($id){
     $user= User::find($id);
     return $user;
  }
 
  public function create(Request $request){
-    $validator = Validator::make($request->all(), [
-        'user' => 'required',
-        'name' => 'required',
-        'surname' => 'nullable',
-        'email' => 'required|string|email',
-        'password' => 'required|string|min:6',
-        'rol' => 'required|integer',
-    ]);
-    
-    if($validator->fails()){
-        return response()->json($validator->errors()->toJson(),400);
+    $user = new User();
+    $user->user = $request->user;
+    $user->name = $request->name;
+    $user->surname=$request->surname;
+    $user->email = $request->email;
+    $user->password = bcrypt($request->password);
+    $user->rol = $request->rol;
+
+    if( $request->hasFile('imagen') ) {
+        $file = $request->file('imagen');
+        $destinationPath = 'imagen/';
+        $filename = time() . '-' . $file->getClientOriginalName();
+        $uploadSuccess = $request->file('imagen')->move($destinationPath, $filename);
+        $user->imagen = $destinationPath . $filename;
     }
-    $user = User::create(array_merge(
-        $validator->validate(),
-        ['password' => bcrypt($request->password)]
-    ));
     $user->save();
-    return json_encode(['msg'=>'usuario introducizo correctamente']);
+    return response()->json([
+        'message' => '¡Usuario registrado exitosamente!',
+        'user' => $user
+    ]);
  }
 
  public function destroy($id){
     User::destroy($id);
-     return json_encode(["msg"=>"usuario eliminado correctamente"]);
+     return response()->json(["message"=>"usuario eliminado correctamente"]);
  }
 
 public function edit(Request $request, $id){
-    $users = $request->input('user');
-    $name =  $request->input('name');
-    $surname =  $request->input('surname');
-    $email = $request->input('email');
-    $password = $request->input('password');
-    $rol =  $request->input('rol');
-    User::where('id', $id)->update(
-        ['user'=>$users,
-         'name'=>$name,
-         'surname'=>$surname,
-         'email'=>$email,
-         'password'=>$password,
-         'rol'=>$rol]
-      );
-    // if ($this->user->rol != "1") {
-    //     return response()->error('unauthorized', 401);
-    // }
+    $user = User::find($id);
+    $user->user = $request->user;
+    $user->name = $request->name;
+    $user->surname=$request->surname;
+    $user->email = $request->email;
+    $user->password = bcrypt($request->password);
+    $user->rol = $request->rol;
 
-        return json_encode(["msg"=>"Usuario editado correctamente"]);
+    if( $request->hasFile('imagen') ) {
+        $file = $request->file('imagen');
+        $destinationPath = 'imagen/';
+        $filename = time() . '-' . $file->getClientOriginalName();
+        $uploadSuccess = $request->file('imagen')->move($destinationPath, $filename);
+        $user->imagen = $destinationPath . $filename;
+    }
+    $user->update();
+    return response()->json([
+        'message' => '¡Usuario editado exitosamente!',
+        'user' => $user
+    ]);;
     
 }
+
+public function editImage(Request $request, $id){
+    $user = User::find($id);
+
+    if( $request->hasFile('imagen') ) {
+        $file = $request->file('imagen');
+        $destinationPath = 'imagen/';
+        $filename = time() . '-' . $file->getClientOriginalName();
+        $uploadSuccess = $request->file('imagen')->move($destinationPath, $filename);
+        $user->imagen = $destinationPath . $filename;
+    }
+    $user->update();
+    return response()->json([
+        'message' => '¡Imagen actualizada exitosamente!',
+        'user' => $user
+    ]);  
+}
+
+public function destroyImg($id){
+    $user=User::find($id);
+    $user->imagen = null;
+    $user->update();
+    return response()->json([
+        "message"=>"Imagen del usuario eliminado correctamente",
+        "user" => $user
+    ]);
+ }
 
 }
